@@ -1,13 +1,15 @@
-// هذا الكود المحدث يوضع في ملف /api/chat.js
-// يتضمن تصحيح CORS للسماح بالاتصال من Webflow
+// ===================================================================================
+// هذا هو الكود النهائي والكامل الذي يجب وضعه في ملف chat.js على GitHub.
+// يحتوي هذا الإصدار على التصحيح الأمني (CORS) الذي سيحل مشكلة "فشل الاتصال بالخادم".
+// ===================================================================================
 
 /**
- * دالة مساعدة لإضافة CORS headers.
+ * دالة مساعدة لإضافة CORS headers للسماح بالاتصال من أي موقع.
  * @param {object} res - كائن الاستجابة من Vercel.
  */
 const allowCors = (res) => {
   res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*'); // للسماح لجميع المصادر، يمكن تقييده لاحقًا لنطاق موقعك فقط
+  res.setHeader('Access-Control-Allow-Origin', '*'); // يسمح بالاتصال من أي نطاق
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
@@ -16,24 +18,23 @@ const allowCors = (res) => {
 };
 
 export default async function handler(req, res) {
-  // إضافة CORS headers لجميع الاستجابات
+  // تطبيق إعدادات CORS على كل الطلبات
   allowCors(res);
 
-  // المتصفح يرسل طلب OPTIONS أولاً للتحقق من CORS، يجب الرد عليه بنجاح
+  // المتصفح يرسل طلب "OPTIONS" قبل الطلب الفعلي للتحقق من الأمان
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // التأكد من أن الطلب هو POST
+  // التأكد من أن الطلب هو من نوع POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    const { message, sessionID } = req.body;
+    const { message } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // التحقق من وجود مفتاح API في إعدادات Vercel
     if (!apiKey) {
       return res.status(500).json({ error: 'API key not configured on the server.' });
     }
@@ -58,7 +59,6 @@ export default async function handler(req, res) {
 
     const responseData = await response.json();
 
-    // التحقق من وجود رد صالح من النموذج
     if (!responseData.candidates || !responseData.candidates[0].content) {
       const errorReason = responseData.promptFeedback ? responseData.promptFeedback.blockReason : 'Invalid response structure';
       throw new Error(`Gemini API Error: ${errorReason}`);
@@ -67,7 +67,6 @@ export default async function handler(req, res) {
     const aiReply = responseData.candidates[0].content.parts[0].text;
 
     // إرجاع الرد للواجهة
-    // ملاحظة: تسجيل المحادثات يمكن إضافته هنا لاحقًا
     res.status(200).json({ reply: aiReply });
 
   } catch (error) {
